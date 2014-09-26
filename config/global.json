@@ -1,0 +1,14 @@
+{
+    "applications": {
+        "Palm Tree Photos": {
+            "applicationId": "KRoz8apqdtFgWLkOib5EbxOfvPPKYKaqIKzKQMrZ", 
+            "masterKey": "ZhAE1k2GtetF37MigKAOSfdmPcL5KK5ZTCGzSKlJ"
+        }, 
+        "_default": {
+            "link": "Palm Tree Photos"
+        }
+    }, 
+    "global": {
+        "parseVersion": "1.3.0"
+    }
+}

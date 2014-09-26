@@ -1,0 +1,33 @@
+body {
+    font-family:arial;
+}
+
+form {
+    display: inline-block;
+}
+
+input {
+    height:26px;
+margin-top:20px;
+}
+
+.subtitle {
+	display: inline-block;
+	font-weight: bold;
+}
+
+#button{
+    display: inline-block;
+    height:26px;
+	width:70px;
+	background-color:#cc0000;
+	font-family:arial;
+	font-weight:bold;
+	color:#ffffff;
+	border-radius: 5px;
+	text-align:center;
+	margin-top:2px;
+	line-height:26px
+}
+
+
