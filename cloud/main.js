@@ -14,3 +14,20 @@ Parse.Cloud.define("averageStars", function(request, response) {
     }
   });
 });
+
+
+Parse.Cloud.define("getRatings", function(request, response) {
+  	var query = new Parse.Query("Review");
+  	
+	query.select("movie","stars");
+	query.find({
+    success: function(results) {
+		console.log("success results: " + results.length)
+	  response.success(results);
+    },
+    error: function() {
+      response.error("movie lookup failed");
+    }
+  });
+});
+

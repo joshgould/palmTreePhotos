@@ -1,9 +1,34 @@
 $(document).ready(function(){  
 	$avg = $('#avg');
+	$ratings = $('#ratings');
 	$movie = $('#movie');
 	$stars = $('#stars');
 	$comment = $('#comment');
 	$button = $('#button');
+	
+	
+	function displayAll() {
+		console.log("in display all")
+		
+		Parse.Cloud.run('getRatings', {
+			success: function(ratings) {
+				console.log("length: " + ratings.length);
+		        for (var i=0; i<ratings.length; ++i) {
+				console.log("movie " + i + ": " + ratings.get("movie").val());
+		
+				  $ratings.append(" <p>Movie: "+ ratings.get("movie").val() + "</p>");
+		        }
+				
+			},
+			error: function(error) {
+		
+				console.log("error " + error);
+		
+			
+			}
+		});
+	}
+	
 	
 	function displayAvg() {
 		Parse.Cloud.run('averageStars', { movie: 'The Matrix' }, {
@@ -46,7 +71,7 @@ $(document).ready(function(){
 	Parse.initialize("KRoz8apqdtFgWLkOib5EbxOfvPPKYKaqIKzKQMrZ",
                  "3JwT0X10HBPR525oMMGKzoUcF3VecebpFoiSyGyw");
 
-	displayAvg();
+	displayAll();
 
 	
 });
