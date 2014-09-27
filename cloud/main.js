@@ -36,18 +36,13 @@ Parse.Cloud.define("getUniques", function(request, response) {
 	query.find({
     success: function(results) {
 		var uniques = [];
- console.log(results.length);
-		        for (var i = 0; i < results.length; ++i) {
-					  var movie = results[i].movie;
-		           console.log(movie);
-				    if (uniques.indexOf(movie) < 0) { 
-		                uniques.push(movie);
-		      		 }
-		        }  
-		console.log(uniques);
-		
-		
-		
+ 		for (var i= 0; i<results.length; ++i) {
+			var movie = results[i].get("movie");
+			if (uniques.indexOf(movie) < 0) { 
+				uniques.push(movie);
+			}
+		}  
+	//	console.log(uniques);
 		response.success(uniques);
     },
     error: function() {

@@ -1,6 +1,6 @@
 $(document).ready(function(){  
-	$avg = $('#avg');
-	$ratings = $('#ratings');
+	$avgRatings = $('#avgRatings');
+	$allRatings = $('#allRatings');
 	$movie = $('#movie');
 	$stars = $('#stars');
 	$comment = $('#comment');
@@ -11,39 +11,44 @@ $(document).ready(function(){
 		Parse.Cloud.run('getRatings', {}, {
 			success: function(ratings) {
 				for (var i=0; i<ratings.length; ++i) {
-				  $ratings.append("<p>" + ratings[i].get("movie") + ": " + ratings[i].get("stars") + " stars</p>");
+				  $allRatings.append("<p>" + ratings[i].get("movie") + ": " + ratings[i].get("stars") + " stars</p>");
 		        }			
 			},
 			error: function(error) {
-				console.log("error " + error);
+				console.log("displayAll error " + error);
 			}
 		});
-		displayAvg();
 	}
 	
 	
 	function getUniques() {
 		Parse.Cloud.run('getUniques', {}, {
 			success: function(uniques) {
-				$uniques = uniques;
+				console.log("uniques-> " + uniques);
+				$uniques=uniques;
 			},
 			error: function(error) {
+					console.log("getUniques error " + error);
 			}
+		}).then(function() {
+				for (var i=0; i<$uniques.length; ++i) {
+					displayAvg($uniques[i]);
+				}
 		});
 	}
+		
 	
-	
-	function displayAvg() {
-		var movies = getUniques();
-		console.log("Uniques: " +  $uniques);		
-		Parse.Cloud.run('averageStars', { movie: 'The Matrix' }, {
+	function displayAvg(moviename) {
+		Parse.Cloud.run('averageStars', { movie: moviename }, {
 			success: function(ratings) {
-				$avg.append(" <p>Average is now: "+ ratings + "</p>");			
+				$avgRatings.append("<p>" + moviename + " avg rating: "+ ratings + "stars.</p>");			
 			},
 			error: function(error) {
+				console.log("displayAvg error " + error);
 			}
 		});
 	}
+	
 	
 	
 	function setReview() {
@@ -56,16 +61,18 @@ $(document).ready(function(){
 		  comment: $comment.val()
 		}, {
 		  		success: function(review) {
-		    		console.log("saved!!");
+		    		console.log("setReview saved:" + review);
 				},
 		  		error: function(review, error) {
-		 			console.log("error not saved");
+		 			console.log("setReview error not saved" + review + error);
 				}
 			});
 		}
+		
 	
   	$button.click(function() {
     	setReview();
+		getUniques();
 		displayAll();
   	});
 		
@@ -75,7 +82,7 @@ $(document).ready(function(){
 	Parse.initialize("KRoz8apqdtFgWLkOib5EbxOfvPPKYKaqIKzKQMrZ",
                  "3JwT0X10HBPR525oMMGKzoUcF3VecebpFoiSyGyw");
 
+	getUniques();
 	displayAll();
-
 	
 });
