@@ -5,42 +5,46 @@ $(document).ready(function(){
 	$stars = $('#stars');
 	$comment = $('#comment');
 	$button = $('#button');
-	
+	$uniques = null;
 	
 	function displayAll() {
-		console.log("in display all")
-		
-		Parse.Cloud.run('getRatings', {
+		Parse.Cloud.run('getRatings', {}, {
 			success: function(ratings) {
-				console.log("length: " + ratings.length);
-		        for (var i=0; i<ratings.length; ++i) {
-				console.log("movie " + i + ": " + ratings.get("movie").val());
-		
-				  $ratings.append(" <p>Movie: "+ ratings.get("movie").val() + "</p>");
-		        }
-				
+				for (var i=0; i<ratings.length; ++i) {
+				  $ratings.append("<p>" + ratings[i].get("movie") + ": " + ratings[i].get("stars") + " stars</p>");
+		        }			
 			},
 			error: function(error) {
-		
 				console.log("error " + error);
-		
-			
+			}
+		});
+		displayAvg();
+	}
+	
+	
+	function getUniques() {
+		Parse.Cloud.run('getUniques', {}, {
+			success: function(uniques) {
+				$uniques = uniques;
+			},
+			error: function(error) {
 			}
 		});
 	}
 	
 	
 	function displayAvg() {
+		var movies = getUniques();
+		console.log("Uniques: " +  $uniques);		
 		Parse.Cloud.run('averageStars', { movie: 'The Matrix' }, {
 			success: function(ratings) {
-				//alert('ratings is' + ratings);
-				$avg.append(" <p>Average is now: "+ ratings + "</p>");
-				
+				$avg.append(" <p>Average is now: "+ ratings + "</p>");			
 			},
 			error: function(error) {
 			}
 		});
 	}
+	
 	
 	function setReview() {
 		var Review = Parse.Object.extend("Review");
@@ -58,11 +62,11 @@ $(document).ready(function(){
 		 			console.log("error not saved");
 				}
 			});
-		displayAvg();
 		}
 	
   	$button.click(function() {
     	setReview();
+		displayAll();
   	});
 		
 
