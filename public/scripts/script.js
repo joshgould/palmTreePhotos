@@ -10,6 +10,7 @@ $(document).ready(function(){
 	function displayAll() {
 		Parse.Cloud.run('getRatings', {}, {
 			success: function(ratings) {
+				$allRatings.empty()
 				for (var i=0; i<ratings.length; ++i) {
 				  $allRatings.append("<p>" + ratings[i].get("movie") + ": " + ratings[i].get("stars") + " stars</p>");
 		        }			
@@ -31,17 +32,18 @@ $(document).ready(function(){
 					console.log("getUniques error " + error);
 			}
 		}).then(function() {
+				$avgRatings.empty();
 				for (var i=0; i<$uniques.length; ++i) {
 					displayAvg($uniques[i]);
 				}
 		});
 	}
-		
+
 	
 	function displayAvg(moviename) {
 		Parse.Cloud.run('averageStars', { movie: moviename }, {
 			success: function(ratings) {
-				$avgRatings.append("<p>" + moviename + " avg rating: "+ ratings + "stars.</p>");			
+				$avgRatings.append("<p>" + moviename + " avg rating: "+ (Math.round(ratings * 10) / 10).toFixed(1) + " stars.</p>");			
 			},
 			error: function(error) {
 				console.log("displayAvg error " + error);
