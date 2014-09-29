@@ -4,8 +4,7 @@ var app = express();
 var $textBody = "";
 var $photoUrls = null;
 var $res = null;
-
-
+var $jpgUrl = null
 
 Parse.Cloud.define('httpRequest', function(request, response) {
 	Parse.Cloud.httpRequest({
@@ -13,7 +12,7 @@ Parse.Cloud.define('httpRequest', function(request, response) {
 	success: function(httpResponse) {
 		console.log("@@request url: " + request.params.url);
 		response.success(httpResponse);
-	    console.log(httpResponse.text);
+	//    console.log("@@ response" + httpResponse.text);
 	  },
 	  error: function(httpResponse) {
 			response.error("httpRequest failed");    
@@ -22,6 +21,18 @@ Parse.Cloud.define('httpRequest', function(request, response) {
 	});
 });
 
+function strip() {
+console.log("### in strip");
+//	var geturl = new RegExp("https?:\/\/s3.amazonaws.com\/files.parsetfss.com\/([a-z0-9]|-|\/)+.jpg","g");	
+//	if (res.match(geturl)) {
+//		var length = res.match(geturl).length;
+//		console.log('photo url length: ' + length);	
+//		$jpgUrl = res.match(geturl); 
+//		console.log('jpg urls: ' + $jpgUrl);	
+//   		saveInfo();
+//	}
+	
+}
 
 
 function getPhoto(photoUrl) {
@@ -30,11 +41,14 @@ function getPhoto(photoUrl) {
 	Parse.Cloud.run('httpRequest', {url:photoUrl}, {
 		success: function(res) {
 		 	console.log("getphoto res is"  + res);
+			
 		},
 		error: function(error) {
 			console.log("getPhoto error " + error);
 		}
-	});	
+	}).then(function() {
+				strip();
+		});	
 }
 
 
