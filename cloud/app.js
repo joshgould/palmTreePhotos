@@ -6,22 +6,25 @@ var $textBody = "";
 Parse.initialize("KRoz8apqdtFgWLkOib5EbxOfvPPKYKaqIKzKQMrZ",
              "3JwT0X10HBPR525oMMGKzoUcF3VecebpFoiSyGyw");
 
-// Global app configuration section
-//app.set('views', 'cloud/views');  // Specify the folder to find templates
-//app.set('view engine', 'ejs');    // Set the template engine
 app.use(express.bodyParser());    // Middleware for reading request body
 app.post('/test', function(req, res) {
    res.send(req.body.TextBody);
    $textBody = req.body.TextBody;
    console.log('TextBody: ' + req.body.TextBody);	
+   var geturl = new RegExp(
+	  	"<((http|https)://www.kinderlime.com/photos/(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-])>)"
+		,"g"
+       );
+	var length = $textBody.match(geturl).length;
+	console.log('length: ' + length);	
+
+	var urls = $textBody.match(geturl); 
+	console.log('urls: ' + urls);	
    saveInfo();
-})
+});
 	
 
-
-
 function saveInfo() {
-	console.log("in SaveInfo");	
 	var Body = Parse.Object.extend("Body");
 	var body = new Body();	
 	body.save({
