@@ -1,32 +1,63 @@
 // These two lines are required to initialize Express in Cloud Code.
 var express = require('express');
 var app = express();
-var $textBody = "";
-var $photoUrls = null;
 var $res = null;
 var $jpgUrl = null
  
+
+// takes some text and extracts an image url 
+function strip(text) {
+    var photoUrl = null;
+    var geturl = new RegExp("https?:\/\/s3.amazonaws.com\/files.parsetfss.com\/([a-z0-9]|-|\/)+.jpg","g");
+    if (text) {
+    	photoUrl = text.match(geturl);
+    }
+    return text.match(geturl);
+}
+
+// saves the photo  
+function savePhoto(photoUrl) {
+    console.log("@@@savePhoto – photo: " + photoUrl);    
+    var Photo = Parse.Object.extend("Photo");
+    var photo = new Photo();  
  
+    photo.save({
+      photo: photoUrl
+    }, {
+            success: function(photo) {
+                console.log("@@@savePhoto – saved: " + photo);
+            },
+            error: function(photo, error) {
+                console.log("!!!savePhoto – not saved" + error + ". " + photo);
+            }
+        });
+}
+
 Parse.Cloud.define("serialRequests", function(request, response) {
-  var urls = request.params.photos;
+  var urls = request.params.photoUrls;
   var promise = Parse.Promise.as();
   var count = 0;
  
-  console.log("In serialRequests ");
+ console.log("@@@serialRequests – photoUrls: " + urls);
   
+ // for each Url, get the content and extract the photo 
  for (var i = 0; i < urls.length; i++) {
     var url = urls[i];
-    console.log("url: " + url);
+    console.log("@@@serialRequests – url: " + i + ": " + url);
+
+	// not sure what this does... 
     promise = promise.always(function() {
       return Parse.Cloud.httpRequest({
         url: url,
         success: function(httpResponse) {
           //console.log("Response: " + httpResponse.text);
           count++;
+		  
+		  // take the httpresponse text, strip out the photo url and save it
           savePhoto(strip(httpResponse.text));
         },
         error: function(httpResponse) {
-          console.log("Status: " + httpResponse.status);
+          console.log("!!!serialRequests error – status: " + httpResponse.status);
           count++;
         }
       });
@@ -34,103 +65,43 @@ Parse.Cloud.define("serialRequests", function(request, response) {
   }
  
   promise.always(function() {
-    console.log("Count: " + count);
+    console.log("@@@serialRequests – count: " + count);
     return response.success();
   });
 });
  
+
  
-function strip(resp) {
-    var photoUrl = null;
-    console.log("### in strip");
-    var geturl = new RegExp("https?:\/\/s3.amazonaws.com\/files.parsetfss.com\/([a-z0-9]|-|\/)+.jpg","g");
-    if (resp.match(geturl)) {
-        var length = resp.match(geturl).length;
-        console.log('photo url length: ' + length);
-        photoUrl = resp.match(geturl);
-    }
-    return photoUrl;
-}
-  
-  
-function savePhoto(url) {
-    console.log('### saving photo: ' + url);    
-    var PhotoUrl = Parse.Object.extend("PhotoUrl");
-    var photoUrl = new PhotoUrl();  
- 
-    photoUrl.save({
-      photoUrl: url
-    }, {
-            success: function(photoUrl) {
-                console.log("savePhoto saved:" + photoUrl);
-            },
-            error: function(photoUrl, error) {
-                console.log("savePhoto error not saved" + photoUrl + error);
-            }
-        });
-}
-      
- 
- 
-  
-function getPhotos(xphotos) {
-    console.log("*** in getPhotos. Photos:" + xphotos);
-      
-    Parse.Cloud.run('serialRequests', {photos:xphotos}, {
-        success: function(res) {
-            console.log("getphotos res is"  + res);
-            //$jpgUrl = res;
-        },
-        error: function(error) {
-            console.log("getPhotos error " + error);
-        }
-    })
-}
-  
-  
 Parse.initialize("KRoz8apqdtFgWLkOib5EbxOfvPPKYKaqIKzKQMrZ",
              "3JwT0X10HBPR525oMMGKzoUcF3VecebpFoiSyGyw");
   
-app.use(express.bodyParser());    // Middleware for reading request body
+// Middleware for reading request body  
+app.use(express.bodyParser());    
+
+//Listen for incoming posts and strip out photo urls
 app.post('/test', function(req, res) {
     res.send(req.body.TextBody);
-    $textBody = req.body.TextBody;
-    //console.log('TextBody: ' + req.body.TextBody);    
-    var geturl = new RegExp("((http|https)://www.kinderlime.com/photos/(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-]))","g");  
-    if ($textBody && $textBody.match(geturl)) {
-        var length = $textBody.match(geturl).length;
-        console.log('Number of matching URLS: ' + length);  
-        $photoUrls = $textBody.match(geturl); 
-        console.log('Matching URLS array:' + $photoUrls);   
-        saveInfo();
-    }   
+    var textBody = req.body.TextBody;
+    var photoUrls = null;
+	var photoUrl = new RegExp("((http|https)://www.kinderlime.com/photos/(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-]))","g");
+    if (textBody && (photoUrls = textBody.match(photoUrl))) {
+		console.log("@@@Main: Found " + photoUrls.length + " photo Urls: " + photoUrls);		
+	    
+		//Extract the photos from the urls
+		Parse.Cloud.run('serialRequests', {photoUrls:photoUrls}, {
+	        success: function(res) {
+	            console.log("getphotos res is"  + res);
+	        },
+	        error: function(error) {
+	            console.log("getPhotos error " + error);
+	        }
+	    })
+		
+		
+    } else {
+        console.log("@@@Main: Found no photo Urls.");
+    }
 });
-      
-  
-function saveInfo() {
-      
-    // var PhotoUrls = Parse.Object.extend("PhotoUrls");
-    // var photoUrls = new PhotoUrls();
-    // photoUrls.save({
-//    photoUrls: $photoUrls
-//  }, {
-//          success: function(photoUrls) {
-//              console.log("savInfo saved:" + photoUrls);
-//          },
-//          error: function(photoUrls, error) {
-//              console.log("saveInfo error not saved" + photoUrls + error);
-//          }
-//      });
-      
-        // for each photoURL, get the photo
-    // if ($photoUrls) {
-        // for(var i=0; i<$photoUrls.length; i++) {
-            // getPhoto($photoUrls[i]);
-        // }
-    // }
-    getPhotos($photoUrls);
-}
-  
-  
-// Attach the Express app to Cloud Code.
+
+//Attach the Express app to Cloud Code.
 app.listen();
