@@ -7,9 +7,7 @@ var $jpgUrl = null
 
 // takes some text and extracts an image url 
 function strip(text) {
-    console.log("@@@strip – text" + text);    
-   
- 	var photoUrl = null;
+    var photoUrl = null;
     var geturl = new RegExp("https?:\/\/s3.amazonaws.com\/files.parsetfss.com\/([a-z0-9]|-|\/)+.jpg","g");
     if (text) {
     	photoUrl = text.match(geturl);
@@ -35,22 +33,41 @@ function savePhoto(myPhoto) {
         });
 }
 
-Parse.Cloud.define("httpRequest", function(request, response) { 
-var webpage = "Something went wrong.";
-Parse.Cloud.httpRequest({
-        url: request.params.photoUrl,
-        success: function (httpResponse) {    
-        webpage = httpResponse.text;
-        webpage = webpage.toString();
-        response.success(webpage);
-    },
-    error: function (error)
-    {
-        console.log("Error in http request " + error.message);
-        response.error(error.message);
-    }
-  });
+
+Parse.Cloud.define("serialRequests", function(request, response) {
+  var photoUrls = request.params.photoUrls;
+  var promises = [];	
+  console.log("@@@serialRequests – photoUrls: " + photoUrls);
+  
+
+ // for each Photo Url, get the content and extract the photo 
+ for (var i=0; i < photoUrls.length; i++) {
+  var myPhotoUrl = photoUrls[i];
+    console.log("@@@serialRequests – photoUrl:" + i + ": " + myPhotoUrl);
+
+	promises.push( Parse.Cloud.run('httpRequest', {photoUrl:myPhotoUrl}, {
+		 success: function(httpResponse) {
+                console.log("*** httpResponse is"  + httpResponse);
+				var photo = strip(httpResponse.text); 
+				console.log("@@@httpRequests – saving photo: " + photo + ". Stripped from photoUrl:" + i + ": " + myPhotoUrl);
+				savePhoto(photo);
+            },
+			 error: function(error) {
+	                    console.log("*** error " + JSON.stringify(error));
+						//status.error(error.message);
+	         }
+      })
+    );
+ 
+}
+ 
+Parse.Promise.when(promises).then(function() {
+   console.log("*** ALL DONE");
+}, function(err) {
+   console.log("**** ERROR" + JSON.stringify(err));
 });
+});
+
 
 
  
@@ -68,31 +85,17 @@ app.post('/test', function(req, res) {
 	var photoUrl = new RegExp("((http|https)://www.kinderlime.com/photos/(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-]))","g");
     if (textBody && (photoUrls = textBody.match(photoUrl))) {
 		console.log("@@@Main: Found " + photoUrls.length + " photo Urls: " + photoUrls);		
-	    var promises = [];
+	    
+		//Extract the photos from the urls
+		Parse.Cloud.run('serialRequests', {photoUrls:photoUrls}, {
+	        success: function(res) {
+	            console.log("getphotos res is"  + res);
+	        },
+	        error: function(error) {
+	            console.log("getPhotos error " + error);
+	        }
+	    });
 		
-		for (var i=0; i < photoUrls.length; i++) {
-		    var myPhotoUrl = photoUrls[i];		
-		    console.log("@@@ MAIN – photoUrl:" + i + ": " +myPhotoUrl);		
-			promises.push( Parse.Cloud.run('httpRequest', {photoUrl:myPhotoUrl}, {
-		            success: function(httpResponse) {
-		                console.log("*** httpResponse is"  + httpResponse);
-						var photo = strip(httpResponse.text); 
-						console.log("@@@httpRequests – saving photo: " + photo + ". Stripped from photoUrl:" + i + ": " + photoUrl);
-						savePhoto(photo);
-		            },
-		            error: function(error) {
-		                    console.log("*** error " + error.message);
-							status.error(error.message);
-		            }
-		        })
-			);
-		}
-		Parse.Promise.when(promises).then(function() {
-		   console.log("*** ALL DONE");
-		}, function(err) {
-		   console.log("**** ERROR");
-		});
-
     } else {
         console.log("@@@Main: Found no photo Urls.");
     }
