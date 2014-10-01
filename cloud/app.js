@@ -16,48 +16,49 @@ function strip(text) {
 }
 
 // saves the photo  
-function savePhoto(photoUrl) {
-    console.log("@@@savePhoto – photo: " + photoUrl);    
+function savePhoto(myPhoto) {
+    console.log("@@@savePhoto – photo: " + myPhoto);    
     var Photo = Parse.Object.extend("Photo");
     var photo = new Photo();  
  
     photo.save({
-      photo: photoUrl
+      photoName: myPhoto
     }, {
             success: function(photo) {
-                console.log("@@@savePhoto – saved: " + photo);
+                console.log("@@@savePhoto – saved: " + myPhoto);
             },
             error: function(photo, error) {
-                console.log("!!!savePhoto – not saved" + error + ". " + photo);
+                console.log("!!!savePhoto – not saved. Photo: " + myPhoto + ". Error:" + JSON.stringify(error));
             }
         });
 }
 
 Parse.Cloud.define("serialRequests", function(request, response) {
-  var urls = request.params.photoUrls;
+  var photoUrls = request.params.photoUrls;
   var promise = Parse.Promise.as();
   var count = 0;
  
- console.log("@@@serialRequests – photoUrls: " + urls);
+ console.log("@@@serialRequests – photoUrls: " + photoUrls);
   
- // for each Url, get the content and extract the photo 
- for (var i = 0; i < urls.length; i++) {
-    var url = urls[i];
-    console.log("@@@serialRequests – url: " + i + ": " + url);
+ // for each Photo Url, get the content and extract the photo 
+ for (var i=0; i < photoUrls.length; i++) {
+    var photoUrl = photoUrls[i];
+    console.log("@@@serialRequests – photoUrl:" + i + ": " + photoUrl);
 
 	// not sure what this does... 
     promise = promise.always(function() {
       return Parse.Cloud.httpRequest({
-        url: url,
+        url: photoUrl,
         success: function(httpResponse) {
-          //console.log("Response: " + httpResponse.text);
           count++;
 		  
 		  // take the httpresponse text, strip out the photo url and save it
-          savePhoto(strip(httpResponse.text));
+          var photo = strip(httpResponse.text); 
+          console.log("@@@serialRequests – saving photo: " + photo + ". Stripped from photoUrl:" + i + ": " + photoUrl);
+		  savePhoto(photo);
         },
         error: function(httpResponse) {
-          console.log("!!!serialRequests error – status: " + httpResponse.status);
+          console.log("!!!serialRequests error – photoUrl # " + i + " status: " + httpResponse.status);
           count++;
         }
       });
