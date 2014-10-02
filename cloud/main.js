@@ -1,8 +1,8 @@
 require('cloud/app.js');
 
 Parse.Cloud.define("getAllPhotos", function(request, response) {
-  	var query = new Parse.Query("PhotoUrl");
-	query.select("photoUrl");
+  	var query = new Parse.Query("Photo");
+	query.select("photoName");
 	query.find({
     success: function(results) {
 		response.success(results);

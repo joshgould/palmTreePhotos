@@ -33,43 +33,39 @@ function savePhoto(myPhoto) {
         });
 }
 
+function cleanUrl(url) {
+	return url.replace('%20', '');
+}
 
 Parse.Cloud.define("serialRequests", function(request, response) {
   var photoUrls = request.params.photoUrls;
-  var promises = [];	
   console.log("@@@serialRequests – photoUrls: " + photoUrls);
+  var promises = [];
   
-
- // for each Photo Url, get the content and extract the photo 
- for (var i=0; i < photoUrls.length; i++) {
-  var myPhotoUrl = photoUrls[i];
-    console.log("@@@serialRequests – photoUrl:" + i + ": " + myPhotoUrl);
-
-	promises.push( Parse.Cloud.run('httpRequest', {photoUrl:myPhotoUrl}, {
-		 success: function(httpResponse) {
-                console.log("*** httpResponse is"  + httpResponse);
-				var photo = strip(httpResponse.text); 
-				console.log("@@@httpRequests – saving photo: " + photo + ". Stripped from photoUrl:" + i + ": " + myPhotoUrl);
-				savePhoto(photo);
-            },
-			 error: function(error) {
-	                    console.log("*** error " + JSON.stringify(error));
-						//status.error(error.message);
-	         }
-      })
-    );
- 
+  // for each Photo Url, get the content and extract the photo
+  for (var i=0; i < photoUrls.length; i++) {
+  	var myPhotoUrl = cleanUrl(photoUrls[i]);
+  
+    Parse.Cloud.httpRequest({
+        url:myPhotoUrl,
+        success: function(httpResponse) {
+  			console.log("@@@serialRequests – photoUrl:" + i + ": " + myPhotoUrl);
+   			promises.push(savePhoto(strip(httpResponse.text)));
+  	    	
+			// wait for all prommises
+			Parse.Promise.when(promises).then(function(results) {
+	  			console.log("ALL DONE");
+				
+		   });
+		},
+ 	   error: function(httpResponse) {
+      	 console.error('Request failed with response code ' + httpResponse.status);
+      	response.send("Failed");
+    	}
+	});
 }
- 
-Parse.Promise.when(promises).then(function() {
-   console.log("*** ALL DONE");
-}, function(err) {
-   console.log("**** ERROR" + JSON.stringify(err));
+
 });
-});
-
-
-
  
 Parse.initialize("KRoz8apqdtFgWLkOib5EbxOfvPPKYKaqIKzKQMrZ",
              "3JwT0X10HBPR525oMMGKzoUcF3VecebpFoiSyGyw");
@@ -103,3 +99,8 @@ app.post('/test', function(req, res) {
 
 //Attach the Express app to Cloud Code.
 app.listen();
+
+
+
+
+

@@ -6,7 +6,7 @@ $(document).ready(function(){
 			success: function(photos) {
 				$photos.empty()
 				for (var i=0; i<photos.length; ++i) {
-				  $photos.append("<p><img src='" + photos[i].get('photoUrl') + "'></p>");
+				  $photos.append("<p><img src='" + photos[i].get('photoName') + "'></p>");
 		        }			
 			},
 			error: function(error) {
