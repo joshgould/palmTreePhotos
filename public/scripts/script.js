@@ -5,7 +5,6 @@ $(document).ready(function(){
 		Parse.Cloud.run('getAllPhotos', {}, {
 			success: function(photos) {
 				$photos.empty()
-				console.log(photos.length);
 				for (var i=0; i<photos.length; ++i) {
 				  $photos.append("<p><img src='" + photos[i].get('photoName') + "'></p>");
 		        }			
