@@ -41,66 +41,91 @@ Parse.Cloud.define("serialRequests", function(request, response) {
   var photoUrls = request.params.photoUrls;
   console.log("@@@serialRequests – photoUrls: " + photoUrls);
   var promises = [];
-  
+  var photos = [];
   // for each Photo Url, get the content and extract the photo
   for (var i=0; i < photoUrls.length; i++) {
-  	var myPhotoUrl = cleanUrl(photoUrls[i]);
-  
-    Parse.Cloud.httpRequest({
-        url:myPhotoUrl,
-        success: function(httpResponse) {
-  			console.log("@@@serialRequests – photoUrl:" + i + ": " + myPhotoUrl);
-   			promises.push(savePhoto(strip(httpResponse.text)));
-  	    	
-			// wait for all prommises
-			Parse.Promise.when(promises).then(function(results) {
-	  			console.log("ALL DONE");
-				
-		   });
-		},
- 	   error: function(httpResponse) {
-      	 console.error('Request failed with response code ' + httpResponse.status);
-      	response.send("Failed");
-    	}
-	});
+  	var myPhotoUrl = cleanUrl(photoUrls[i]); 
+	    promises.push(
+			Parse.Cloud.httpRequest({
+ 	        	url:myPhotoUrl,
+ 	        }).then(function(httpResponse) {			
+				 console.log("@@@serialRequests – photoUrl:" + i + ": " + myPhotoUrl);
+ 	   			 var stripped = strip(httpResponse.text);
+			     var Photo = Parse.Object.extend("Photo");
+			     var photo = new Photo();  
+ 				 photo.set("photoName", stripped);
+				 photos.push(photo);
+			});
+		);
+        Parse.Object.saveAll(resultsToSave,{
+                success: function(list) {
+                    console.log("saveAll success:" + photos);
+                    status.success("saveAll success");  
+                },
+                error: function(error) {
+                    console.log("saveAll error: " + error.message + error.text + error.data);
+         	   }
+		   });        
+    }
+	Parse.Promise.when(promises);
+});
+
+
+function getPhotoList(textBody) {
+	var photoURls = null;
+	var photoUrl = new RegExp("((http|https)://www.kinderlime.com/photos/(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-]))","g");
+	if (textBody == null) {
+		console.log("@@@checkForPhotos: textBody is null.");
+	} else {
+		photoUrls = textBody.match(photoUrl);
+		if (photoUrls == null) {
+			console.log("@@@checkForPhotos: no photos found.");
+			return;
+		} else {
+			console.log("@@@checkForPhotos: Found " + photoUrls.length + " photo Urls: " + photoUrls);
+		}
+	}
+	return photoUrls;
 }
 
-});
- 
+function getPhotos(textBody) {
+ 	var photoUrls = getPhotoList(textBody);
+	if (photoUrls == null) {
+		return;
+	}
+	//Extract the photos from the urls
+	  return Parse.Cloud.run('serialRequests', {photoUrls:photoUrls}, {
+        success: function(res) {
+			response.success("###success: " + res);
+        },
+        error: function(error) {
+			response.error("###error: " + error);
+        }
+    });
+}	
+
 Parse.initialize("KRoz8apqdtFgWLkOib5EbxOfvPPKYKaqIKzKQMrZ",
              "3JwT0X10HBPR525oMMGKzoUcF3VecebpFoiSyGyw");
   
 // Middleware for reading request body  
 app.use(express.bodyParser());    
 
-//Listen for incoming posts and strip out photo urls
+//Listen for incoming posts and get the photos
 app.post('/test', function(req, res) {
-    res.send(req.body.TextBody);
-    var textBody = req.body.TextBody;
-    var photoUrls = null;
-	var photoUrl = new RegExp("((http|https)://www.kinderlime.com/photos/(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-]))","g");
-    if (textBody && (photoUrls = textBody.match(photoUrl))) {
-		console.log("@@@Main: Found " + photoUrls.length + " photo Urls: " + photoUrls);		
-	    
-		//Extract the photos from the urls
-		Parse.Cloud.run('serialRequests', {photoUrls:photoUrls}, {
-	        success: function(res) {
-	            console.log("getphotos res is"  + res);
-	        },
-	        error: function(error) {
-	            console.log("getPhotos error " + error);
-	        }
-	    });
-		
-    } else {
-        console.log("@@@Main: Found no photo Urls.");
-    }
+    var promise = getPhotos(req.body.TextBody);
+	
+//	console.log("promise: " + JSON.stringify(promise));
+	
+	Parse.Promise.when([promise]).then(function() { 
+		console.log("%%% promise complete");
+		console.log("status success: " + status.success());	
+		console.log("status error: " + status.error());	
+		status.success(); 
+	});
+	
+	res.send(req.body.TextBody);
 });
-
+		
 //Attach the Express app to Cloud Code.
 app.listen();
-
-
-
-
 
