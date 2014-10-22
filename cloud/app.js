@@ -45,7 +45,7 @@ Parse.Cloud.define("serialRequests", function(request, response) {
   // for each Photo Url, get the content and extract the photo
   for (var i=0; i < photoUrls.length; i++) {
   	var myPhotoUrl = cleanUrl(photoUrls[i]); 
-		console.log("pushing: " + myPhotoUrl);
+		//console.log("pushing: " + myPhotoUrl);
 		promises.push(	
 			Parse.Cloud.httpRequest({
  	        	url:myPhotoUrl,
@@ -59,10 +59,26 @@ Parse.Cloud.define("serialRequests", function(request, response) {
 			})
 		);
 	}
-	return Parse.Object.saveAll(photos).then(function(list){
-		console.log("saveAll success: name" + list);
+	
+	Parse.Promise.when(promises).then(function(results) {
+		return Parse.Object.saveAll(photos, {
+		    success: function(list) {
+		      // All the objects were saved.
+		      response.success("save all ok");
+		    },
+		    error: function(error) {
+		      // An error occurred while saving one of the objects.
+		      response.error("failure on saving list " + JSON.stringify(error));
+		    },
+			}).then(function(){
+				console.log("saveAll success");		
+			});				
 	});
-	Parse.Promise.when(promises);
+	
+	
+	
+		
+
 });
 
 
