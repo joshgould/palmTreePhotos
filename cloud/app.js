@@ -16,22 +16,22 @@ function strip(text) {
 }
 
 // saves the photo  
-function savePhoto(myPhoto) {
-    console.log("@@@savePhoto – photo: " + myPhoto);    
-    var Photo = Parse.Object.extend("Photo");
-    var photo = new Photo();  
- 
-    photo.save({
-      photoName: myPhoto
-    }, {
-            success: function(photo) {
-                console.log("@@@savePhoto – saved: " + myPhoto);
-            },
-            error: function(photo, error) {
-                console.log("!!!savePhoto – not saved. Photo: " + myPhoto + ". Error:" + JSON.stringify(error));
-            }
-        });
-}
+// function savePhoto(myPhoto) {
+//     console.log("@@@savePhoto – photo: " + myPhoto);
+//     var Photo = Parse.Object.extend("Photo");
+//     var photo = new Photo();
+//
+//     photo.save({
+//       photoName: myPhoto
+//     }, {
+//             success: function(photo) {
+//                 console.log("@@@savePhoto – saved: " + myPhoto);
+//             },
+//             error: function(photo, error) {
+//                 console.log("!!!savePhoto – not saved. Photo: " + myPhoto + ". Error:" + JSON.stringify(error));
+//             }
+//         });
+// }
 
 function cleanUrl(url) {
 	return url.replace('%20', '');
@@ -39,34 +39,29 @@ function cleanUrl(url) {
 
 Parse.Cloud.define("serialRequests", function(request, response) {
   var photoUrls = request.params.photoUrls;
-  console.log("@@@serialRequests – photoUrls: " + photoUrls);
+ // console.log("@@@serialRequests – photoUrls: " + photoUrls);
   var promises = [];
   var photos = [];
   // for each Photo Url, get the content and extract the photo
   for (var i=0; i < photoUrls.length; i++) {
   	var myPhotoUrl = cleanUrl(photoUrls[i]); 
-	    promises.push(
+		console.log("pushing: " + myPhotoUrl);
+		promises.push(	
 			Parse.Cloud.httpRequest({
  	        	url:myPhotoUrl,
  	        }).then(function(httpResponse) {			
-				 console.log("@@@serialRequests – photoUrl:" + i + ": " + myPhotoUrl);
- 	   			 var stripped = strip(httpResponse.text);
-			     var Photo = Parse.Object.extend("Photo");
+				 var stripped = strip(httpResponse.text);
+				 console.log("@@@serialRequests – photoUrl:" + stripped);
+				 var Photo = Parse.Object.extend("Photo");
 			     var photo = new Photo();  
  				 photo.set("photoName", stripped);
 				 photos.push(photo);
-			});
+			})
 		);
-        Parse.Object.saveAll(resultsToSave,{
-                success: function(list) {
-                    console.log("saveAll success:" + photos);
-                    status.success("saveAll success");  
-                },
-                error: function(error) {
-                    console.log("saveAll error: " + error.message + error.text + error.data);
-         	   }
-		   });        
-    }
+	}
+	return Parse.Object.saveAll(photos).then(function(list){
+		console.log("saveAll success: name" + list);
+	});
 	Parse.Promise.when(promises);
 });
 
