@@ -1,9 +1,7 @@
 // These two lines are required to initialize Express in Cloud Code.
 var express = require('express');
 var app = express();
-var $res = null;
-var $jpgUrl = null
- 
+var photoDate = null;
 
 // takes some text and extracts an image url 
 function strip(text) {
@@ -15,97 +13,103 @@ function strip(text) {
     return text.match(geturl);
 }
 
-// saves the photo  
-// function savePhoto(myPhoto) {
-//     console.log("@@@savePhoto – photo: " + myPhoto);
-//     var Photo = Parse.Object.extend("Photo");
-//     var photo = new Photo();
-//
-//     photo.save({
-//       photoName: myPhoto
-//     }, {
-//             success: function(photo) {
-//                 console.log("@@@savePhoto – saved: " + myPhoto);
-//             },
-//             error: function(photo, error) {
-//                 console.log("!!!savePhoto – not saved. Photo: " + myPhoto + ". Error:" + JSON.stringify(error));
-//             }
-//         });
-// }
-
 function cleanUrl(url) {
 	return url.replace('%20', '');
 }
 
 Parse.Cloud.define("serialRequests", function(request, response) {
-  var photoUrls = request.params.photoUrls;
- // console.log("@@@serialRequests – photoUrls: " + photoUrls);
+  var photoObj = request.params.photos;
+  var photoUrls = photoObj.photoUrls;
+  var photoDate = photoObj.date;
   var promises = [];
   var photos = [];
-  // for each Photo Url, get the content and extract the photo
   for (var i=0; i < photoUrls.length; i++) {
   	var myPhotoUrl = cleanUrl(photoUrls[i]); 
-		//console.log("pushing: " + myPhotoUrl);
 		promises.push(	
 			Parse.Cloud.httpRequest({
  	        	url:myPhotoUrl,
  	        }).then(function(httpResponse) {			
 				 var stripped = strip(httpResponse.text);
-				 console.log("@@@serialRequests – photoUrl:" + stripped);
 				 var Photo = Parse.Object.extend("Photo");
 			     var photo = new Photo();  
+				 photo.set("photoDate", photoDate)
  				 photo.set("photoName", stripped);
 				 photos.push(photo);
 			})
 		);
-	}
-	
-	Parse.Promise.when(promises).then(function(results) {
-		return Parse.Object.saveAll(photos, {
-		    success: function(list) {
-		      // All the objects were saved.
-		      response.success("save all ok");
-		    },
-		    error: function(error) {
-		      // An error occurred while saving one of the objects.
-		      response.error("failure on saving list " + JSON.stringify(error));
-		    },
-			}).then(function(){
-				console.log("saveAll success");		
-			});				
+	}	
+	Parse.Promise.when(promises).then(function() {	
+		var objectsToSave = [];
+		var result = true;
+		for (var i=photos.length-1; i >= 0; i--) {
+		    objectsToSave.push(photos[i]); 
+		    if (i % 10 == 0) {
+		        result = saveObjects(objectsToSave);
+		        objectsToSave.length = 0;
+		    }
+		};
+		if (result == true) {
+		    console.log("saveInBackground success");
+		}
+	}).then(function() {
+		response.success("serialRequests complete");
 	});
-	
-	
-	
-		
+	}, function(err) {
+	console.log('@@@serialRequests - parse promises error:' +  JSON.stringify(error));
+	response.error();
+});  
 
-});
-
+function saveObjects(photos) {
+ // 	console.log('@@@saveObjects - in saveObjects');
+	Parse.Object.saveAll(photos, {
+    success: function(list) {
+      // All the objects were saved.
+      response.success("save all ok");
+    },
+    error: function(error) {
+      // An error occurred while saving one of the objects.
+	  console.log('@@@saveObject - savall error:' + error);
+	  response.error("failure on saving list " + JSON.stringify(error));
+    },
+	}).then(function(){
+		console.log("saveAll success");		
+	});
+}
 
 function getPhotoList(textBody) {
-	var photoURls = null;
 	var photoUrl = new RegExp("((http|https)://www.kinderlime.com/photos/(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-]))","g");
+	var dateStr = new RegExp("(Date:\\s[A-Z]\\w+,\\s[A-Z]\\w+\\s[0-9]+,\\s[0-9]+)","i");
+	var photoObj = {
+		date:null,
+		photoUrls:null
+	};
+	
 	if (textBody == null) {
-		console.log("@@@checkForPhotos: textBody is null.");
+		console.log("@@@getPhotoList: textBody is null.");
 	} else {
-		photoUrls = textBody.match(photoUrl);
-		if (photoUrls == null) {
-			console.log("@@@checkForPhotos: no photos found.");
-			return;
+		photoObj.photoUrls = textBody.match(photoUrl);
+		photoObj.date = textBody.match(dateStr);
+
+		if (photoObj.date != null) {
+			photoObj.date = photoObj.date[0].substring(6);
+		}
+		
+		if (photoObj.photoUrls == null) {
+			console.log("@@@getPhotoList: no photos found.");
 		} else {
-			console.log("@@@checkForPhotos: Found " + photoUrls.length + " photo Urls: " + photoUrls);
+			console.log("@@@getPhotoList: Found " + photoObj.photoUrls.length + " photo Urls: " + photoObj.photoUrls + " date:" + photoObj.date);
 		}
 	}
-	return photoUrls;
+	return photoObj;
 }
 
 function getPhotos(textBody) {
- 	var photoUrls = getPhotoList(textBody);
-	if (photoUrls == null) {
+ 	var photos = getPhotoList(textBody);
+	if (photos == null) {
 		return;
 	}
 	//Extract the photos from the urls
-	  return Parse.Cloud.run('serialRequests', {photoUrls:photoUrls}, {
+	  return Parse.Cloud.run('serialRequests', {photos:photos}, {
         success: function(res) {
 			response.success("###success: " + res);
         },
@@ -124,16 +128,9 @@ app.use(express.bodyParser());
 //Listen for incoming posts and get the photos
 app.post('/test', function(req, res) {
     var promise = getPhotos(req.body.TextBody);
-	
-//	console.log("promise: " + JSON.stringify(promise));
-	
 	Parse.Promise.when([promise]).then(function() { 
-		console.log("%%% promise complete");
-		console.log("status success: " + status.success());	
-		console.log("status error: " + status.error());	
 		status.success(); 
-	});
-	
+	});	
 	res.send(req.body.TextBody);
 });
 		
