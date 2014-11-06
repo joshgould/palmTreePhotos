@@ -76,13 +76,16 @@ function saveObjects(photos) {
 	});
 }
 
-function getPhotoList(textBody) {
+function getPhotoList(req) {
 	var photoUrl = new RegExp("((http|https)://www.kinderlime.com/photos/(([A-Za-z0-9$_.+!*(),;/?:@&~=-])|%[A-Fa-f0-9]{2}){2,}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*(),;/?:@&~=%-]*))?([A-Za-z0-9$_+!*();/?:~-]))","g");
-	var dateStr = new RegExp("(Date:\\s[A-Z]\\w+,\\s[A-Z]\\w+\\s[0-9]+,\\s[0-9]+)","i");
+	var dateStr = new RegExp("(Date:\\s[A-Z]\\w+,\\s[A-Z]\\w+\\s[0-9]+,\\s[0-9]+)\\sat\\s[0-9]+:[0-9]+\\s[A-Z]\\w+","i");
 	var photoObj = {
 		date:null,
 		photoUrls:null
 	};
+	
+	var textBody = req.body.TextBody;
+	var jsonDate = req.body.Date;
 	
 	if (textBody == null) {
 		console.log("@@@getPhotoList: textBody is null.");
@@ -91,7 +94,9 @@ function getPhotoList(textBody) {
 		photoObj.date = textBody.match(dateStr);
 
 		if (photoObj.date != null) {
-			photoObj.date = photoObj.date[0].substring(6);
+			photoObj.date = new Date(photoObj.date[0].substring(6).replace(" at", ""));
+		} else {
+			photoObj.date = new Date(jsonDate);
 		}
 		
 		if (photoObj.photoUrls == null) {
@@ -103,8 +108,8 @@ function getPhotoList(textBody) {
 	return photoObj;
 }
 
-function getPhotos(textBody) {
- 	var photos = getPhotoList(textBody);
+function getPhotos(req) {
+ 	var photos = getPhotoList(req);
 	if (photos == null) {
 		return;
 	}
@@ -127,7 +132,7 @@ app.use(express.bodyParser());
 
 //Listen for incoming posts and get the photos
 app.post('/test', function(req, res) {
-    var promise = getPhotos(req.body.TextBody);
+    var promise = getPhotos(req);
 	Parse.Promise.when([promise]).then(function() { 
 		status.success(); 
 	});	

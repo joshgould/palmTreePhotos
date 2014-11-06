@@ -4,7 +4,8 @@ $(document).ready(function(){
 	function displayAll() {
 		Parse.Cloud.run('getAllPhotos', {}, {
 			success: function(photos) {
-				$photos.empty()
+				$photos.empty();
+			    $photos.append("<h1>" + photos[0].get('photoDate').toLocaleString() + "</h1>");	
 				for (var i=0; i<photos.length; ++i) {
 				  $photos.append("<p><img src='" + photos[i].get('photoName') + "'></p>");
 		        }			
